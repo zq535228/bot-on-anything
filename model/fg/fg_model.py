@@ -18,6 +18,9 @@ class FastgptModel(Model):
     def reply(self, query, context = None) :
         if not context or not context.get('type') or context.get('type') == 'TEXT':
             from_user_id = context['from_user_id']
+            
+            logger.info("from_user_id:"+str(from_user_id))
+            
             if query in "#清除记忆":
                 user_session[from_user_id] = []
                 return '记忆已清除'
@@ -31,6 +34,8 @@ class FastgptModel(Model):
         try:
             # user_session[from_user_id]
             prompts = user_session[from_user_id]
+            
+            
             baseurl = "https://ai.jianyandashu.com/api/openapi/v1/chat/completions" #可以出现在配置文件中
 
             # for msg in session:
@@ -45,9 +50,13 @@ class FastgptModel(Model):
             #     else:
             #         logger.warn(f"无效的消息格式: {msg}")
                     
-            if len(query)>2:
+            if len(query)>0:
                 prompt = {"role": "user", "content": query}
                 prompts.append(prompt)
+            
+            # 最大的历史对话保留5个
+            if len(prompts)>5 :
+                prompts = user_session[from_user_id][-5:]
             
             logger.info(prompts) #打印出来prompts的所有元素,让其实现了连续对话功能.
 
@@ -79,10 +88,10 @@ class FastgptModel(Model):
                 #return Reply(ReplyType.TEXT, res["data"]) #当然可以在这里增加广告了
             else:
                 #time.sleep(2)
-                return "error"+e #出错了
+                return "error" #出错了
 
         except Exception as e:
             logger.exception(e)
             # retry
             # time.sleep(2)
-            return "error"+e
+            return "error"

@@ -1,0 +1,12 @@
+# 非 host 版本, 不使用本机代理
+version: '3.3'
+services:
+
+  wechat_mp:
+    container_name: wechat_mp
+    image: zq535228/wechat_mp
+    restart: always
+    ports:
+      - 3002:3000
+    environment:
+      - TZ=Asia/Shanghai
