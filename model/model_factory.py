@@ -4,6 +4,7 @@ channel factory
 
 from common import const
 
+
 def create_bot(model_type):
     """
     create a channel instance
@@ -32,5 +33,9 @@ def create_bot(model_type):
     elif model_type == const.BARD:
         from model.google.bard_model import BardModel
         return BardModel()
+
+    elif model_type == const.FG:
+        from model.fg.fg_model import FastgptModel
+        return FastgptModel()
 
     raise RuntimeError
