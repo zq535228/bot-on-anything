@@ -1,5 +1,6 @@
 # encoding:utf-8
 
+import datetime
 import json
 import time
 import requests
@@ -8,6 +9,7 @@ from common.log import logger
 from common import log
 
 user_session = dict()
+user_uptime = dict()
 
 # OpenAI对话模型API (可用)
 class FastgptModel(Model):
@@ -28,6 +30,16 @@ class FastgptModel(Model):
             tmp = user_session.get(from_user_id, [])
             if len(tmp) == 0:
                 user_session[from_user_id] = []
+            
+            # 获取对话的初始时间，如果不存在返回一小时前的时间戳。
+            start_time = user_uptime.get(from_user_id, datetime.datetime.now() - datetime.timedelta(hours=1))
+            now_time = datetime.datetime.now()
+            total_seconds = (now_time - start_time).total_seconds()
+            
+            # 60秒内，不准提交新问题。
+            if total_seconds<60:
+                return f"上次提交：{start_time.strftime('%Y-%m-%d %H:%M:%S')}，60秒内只能提交一次，请不要重复提交！"
+                
             return self.reply_text(query, from_user_id,0)
 
     def reply_text(self, query, from_user_id, retry_count=0):
@@ -61,6 +73,9 @@ class FastgptModel(Model):
 
             response = requests.request("POST", baseurl, headers=headers, data=payload)
 
+            # 设置最后一次提交的时间
+            user_uptime[from_user_id]  = datetime.datetime.now()
+            
             if response.status_code == 200:
                 res = response.json()
                 logger.info(f"response :{res}")
