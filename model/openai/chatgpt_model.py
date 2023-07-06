@@ -21,6 +21,7 @@ class ChatGPTModel(Model):
             openai.proxy = proxy
         log.info("[CHATGPT] api_base={} proxy={}".format(
             api_base, proxy))
+        
     def reply(self, query, context=None):
         # acquire reply content
         if not context or not context.get('type') or context.get('type') == 'TEXT':

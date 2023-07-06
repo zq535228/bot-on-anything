@@ -17,8 +17,8 @@ class FastgptModel(Model):
 
     def reply(self, query, context = None) :
         if not context or not context.get('type') or context.get('type') == 'TEXT':
-            from_user_id = context['from_user_id']
             
+            from_user_id = context['from_user_id']
             logger.info("from_user_id:"+str(from_user_id))
             
             if query in "#清除记忆":
@@ -28,28 +28,14 @@ class FastgptModel(Model):
             tmp = user_session.get(from_user_id, [])
             if len(tmp) == 0:
                 user_session[from_user_id] = []
-            return self.reply_text(query, from_user_id)
+            return self.reply_text(query, from_user_id,0)
 
-    def reply_text(self, query, from_user_id):
+    def reply_text(self, query, from_user_id, retry_count=0):
         try:
-            # user_session[from_user_id]
             prompts = user_session[from_user_id]
             
-            
             baseurl = "https://ai.jianyandashu.com/api/openapi/v1/chat/completions" #可以出现在配置文件中
-
-            # for msg in session:
-            #     if "role" in msg and "content" in msg:
-            #         if msg["role"] == "Human":
-            #             prompt = {"role": "Human", "content": msg["content"]}
-            #             prompts.append(prompt)
-            #         if msg["role"] == "AI":
-            #             prompt = {"role": "AI", "content": msg["content"]}
-            #             prompts.append(prompt)
-
-            #     else:
-            #         logger.warn(f"无效的消息格式: {msg}")
-                    
+                  
             if len(query)>0:
                 prompt = {"role": "user", "content": query}
                 prompts.append(prompt)
@@ -77,6 +63,7 @@ class FastgptModel(Model):
 
             if response.status_code == 200:
                 res = response.json()
+                logger.info(f"response :{res}")
                 # session = self.sessions.session_reply(res["data"], session_id)
                 answer = res["choices"][0]["message"][0]["content"]
                 
@@ -85,13 +72,21 @@ class FastgptModel(Model):
                 user_session[from_user_id] = prompts
                 
                 return answer
-                #return Reply(ReplyType.TEXT, res["data"]) #当然可以在这里增加广告了
             else:
-                #time.sleep(2)
-                return "error" #出错了
+                if retry_count < 3:
+                    time.sleep(5)
+                    log.warn(f"请求连接失败啦，请再试一次，出错代码：{response.status_code}")
+                    return self.reply_text(query, from_user_id, retry_count+1)
+                else:
+                    return f"请求连接失败啦，请再试一次，出错代码：{response.status_code}"
 
         except Exception as e:
-            logger.exception(e)
-            # retry
-            # time.sleep(2)
-            return "error"
+            log.warn(e)
+            
+            if retry_count < 3:
+                time.sleep(5)
+                log.warn(f"[CHATGPT] RateLimit exceed, 第{retry_count+1}次重试，异常：{e}")
+                return self.reply_text(query, from_user_id, retry_count+1)
+            else:
+                return "出错啦，请再问我一次吧："+e
+
